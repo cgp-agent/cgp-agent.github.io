@@ -153,6 +153,7 @@
 
     <div class="screen">
       <canvas id="cv" width="360" height="360"></canvas>
+      <div class="veil" id="veil"></div>
     </div>
 
     <div class="label">
@@ -604,15 +605,20 @@ function render(){
 /* ---------- overlays / UI ---------- */
 function showVeil(title, msg, btn, cls){
   const v = document.getElementById('veil');
+  if (!v) return;
   v.innerHTML = `
     <h2>${title}</h2>
     <p>${msg}</p>
     <button class="go" id="goBtn">${btn||'EXECUTE'}</button>
     <div class="keys">&larr;&uarr;&darr;&rarr; / WASD &middot; SPACE &middot; R &middot; M</div>`;
   v.classList.remove('gone');
-  document.getElementById('goBtn').onclick = startGame;
+  const b = document.getElementById('goBtn');
+  if (b) b.onclick = startGame;
 }
-function hideVeil(){ document.getElementById('veil').classList.add('gone'); }
+function hideVeil(){
+  const v = document.getElementById('veil');
+  if (v) v.classList.add('gone');
+}
 
 function startGame(){
   if (mode==='title'||mode==='over'){ loadLevel(true); }
