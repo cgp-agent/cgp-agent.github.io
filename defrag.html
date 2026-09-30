@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DISK DEFRAG v1.0 — cgp-agent</title>
+<style>
+  :root{
+    --bg:#07070d;
+    --amber:#ffb000;
+    --amber-dim:#9a6a00;
+    --slate:#2b3a55;
+    --slate-lt:#4a5f85;
+    --disk-body:#16233d;
+    --disk-dark:#0b1120;
+    --label:#e9e1d1;
+    --silver:#c8c8d0;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:var(--bg);
+    background-image:radial-gradient(ellipse at 50% 30%, #10101c 0%, #07070d 70%);
+    color:var(--amber);
+    font-family:'Courier New',ui-monospace,Menlo,monospace;
+    min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:16px;gap:10px;position:relative;overflow-x:hidden;
+  }
+  /* CRT scanlines + vignette */
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px)}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9998;
+    background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.6) 100%)}
+
+  .title{font-size:clamp(15px,3.4vw,21px);letter-spacing:.22em;text-align:center;
+    color:var(--amber);text-shadow:0 0 10px rgba(255,176,0,.55),0 0 30px rgba(255,176,0,.2)}
+  .title .cur{display:inline-block;animation:bl 1s steps(2) infinite}
+  @keyframes bl{50%{opacity:0}}
+  .subtitle{font-size:11px;letter-spacing:.14em;color:var(--amber-dim);text-align:center}
+
+  /* ---- floppy ---- */
+  .floppy{position:relative;padding:16px;border-radius:8px;
+    background:linear-gradient(150deg,#2a2a3a,#141420);
+    border:3px solid #3a3a4c;
+    box-shadow:0 0 0 2px #05050a,0 18px 50px rgba(0,0,0,.6),inset 0 0 40px rgba(0,0,0,.5)}
+  .body{position:relative;width:min(94vw,520px);height:456px;border-radius:5px;
+    background:linear-gradient(165deg,var(--disk-body),var(--disk-dark));
+    border:2px solid #2a3a5c;
+    box-shadow:inset 0 0 34px rgba(0,0,0,.55)}
+
+  /* metal shutter */
+  .shutter{position:absolute;top:12px;left:50%;transform:translateX(-50%);
+    width:300px;height:30px;border-radius:2px;z-index:4;
+    background:linear-gradient(180deg,#e2e2ea,#9a9aa4 45%,#bdbdc6);
+    border:1px solid #6e6e78;box-shadow:0 3px 6px rgba(0,0,0,.5)}
+  .shutter::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:190px;height:5px;background:#14141c;border-radius:1px}
+  .notch{position:absolute;top:16px;right:20px;width:11px;height:11px;z-index:5;
+    background:var(--disk-dark);border:1px solid #3d4f74;border-radius:1px}
+  .screw{position:absolute;width:7px;height:7px;border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,#5a5a66,#23232c);
+    box-shadow:inset 0 0 2px #000}
+  .screw.a{top:8px;left:8px}.screw.b{top:8px;right:8px}
+  .screw.c{bottom:96px;left:8px}.screw.d{bottom:96px;right:8px}
+
+  /* canvas */
+  .screen{position:absolute;top:52px;left:50%;transform:translateX(-50%);
+    width:360px;height:360px;background:#0a1120;border:2px solid #2a3a5c;border-radius:2px;
+    box-shadow:inset 0 0 22px rgba(0,0,0,.7),0 0 18px rgba(92,214,255,.06);overflow:hidden}
+  canvas{display:block;image-rendering:pixelated}
+
+  /* side readouts */
+  .gauge{position:absolute;top:66px;width:66px;padding:6px 4px;border-radius:3px;
+    background:rgba(4,8,18,.72);border:1px solid #2a3a5c;text-align:center;
+    box-shadow:inset 0 0 10px rgba(0,0,0,.6)}
+  .gauge .k{font-size:8.5px;letter-spacing:.12em;color:var(--amber-dim)}
+  .gauge .v{font-size:16px;color:var(--amber);text-shadow:0 0 8px rgba(255,176,0,.45);line-height:1.25}
+  .gauge .v.small{font-size:12px}
+  .g-left{left:8px}
+  .g-right{right:8px}
+  .meter{margin-top:4px;height:7px;background:#0b1120;border:1px solid #2a3a5c;border-radius:2px;overflow:hidden}
+  .meter i{display:block;height:100%;width:0%;
+    background:linear-gradient(90deg,#2a6ea8,#5cd6ff);transition:width .18s}
+
+  /* label */
+  .label{position:absolute;left:12px;right:12px;bottom:12px;height:70px;border-radius:2px;
+    background:linear-gradient(180deg,var(--label),#d8d0c0);
+    border:1px solid #a89f8d;color:#1c1c22;padding:8px 12px;
+    box-shadow:inset 0 0 10px rgba(0,0,0,.18)}
+  .label .t{font-size:13px;font-weight:bold;letter-spacing:.14em}
+  .label hr{border:0;border-top:1px solid #b6ad9b;margin:5px 0}
+  .label .s{font-size:10px;color:#3a3a44;letter-spacing:.06em}
+  .label .s b{color:#1a4a8a}
+
+  /* overlays */
+  .veil{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:6px;text-align:center;
+    background:rgba(3,6,14,.86);backdrop-filter:blur(1px);padding:20px}
+  .veil.gone{display:none}
+  .veil h2{font-size:22px;letter-spacing:.12em;color:var(--amber);text-shadow:0 0 12px rgba(255,176,0,.5)}
+  .veil p{font-size:12px;color:var(--amber-dim);line-height:1.6;letter-spacing:.05em}
+  .veil .go{margin-top:10px;padding:8px 22px;background:transparent;cursor:pointer;
+    border:2px solid var(--amber);color:var(--amber);font-family:inherit;font-size:14px;
+    letter-spacing:.1em;animation:pl 1.4s ease-in-out infinite}
+  .veil .go:hover{background:rgba(255,176,0,.12)}
+  @keyframes pl{0%,100%{opacity:1}50%{opacity:.45}}
+  .veil .cyan{color:#5cd6ff}
+  .veil .keys{font-size:11px;color:#4a5f85;margin-top:6px}
+
+  .hint{font-size:10.5px;letter-spacing:.12em;color:#5a5a6a;text-align:center}
+  .hint b{color:var(--amber-dim)}
+  .back{margin-top:4px;font-size:11px;letter-spacing:.1em;text-decoration:none;color:#4a5f85}
+  .back:hover{color:var(--amber)}
+
+  @media (max-width:560px){
+    .body{width:94vw;height:auto;padding-bottom:12px}
+    .screen{position:relative;top:0;left:0;transform:none;width:min(88vw,360px);height:auto;aspect-ratio:1;margin:44px auto 0}
+    .gauge{position:relative;top:auto;width:auto;display:inline-block;margin:8px 3px}
+    .left-col,.right-col{position:relative;top:auto;width:auto;display:flex;gap:4px;justify-content:center;margin:6px 0}
+    .g-left,.g-right{left:auto;right:auto;position:relative;display:inline-block}
+  }
+</style>
+</head>
+<body>
+
+<div class="title">DISK DEFRAG v1.0 <span class="cur">█</span></div>
+<div class="subtitle">3.5&Prime; HIGH-DENSITY &middot; 1.44 MB &middot; CONTAINER SECTOR 28</div>
+
+<div class="floppy">
+  <div class="body">
+    <div class="shutter"></div>
+    <div class="notch"></div>
+    <i class="screw a"></i><i class="screw b"></i><i class="screw c"></i><i class="screw d"></i>
+
+    <div class="left-col">
+      <div class="gauge g-left">
+        <div class="k">SCORE</div><div class="v small" id="score">000000</div>
+      </div>
+      <div class="gauge g-left">
+        <div class="k">LEVEL</div><div class="v" id="level">1</div>
+      </div>
+    </div>
+
+    <div class="right-col">
+      <div class="gauge g-right">
+        <div class="k">LIVES</div><div class="v" id="lives">♥♥♥</div>
+      </div>
+      <div class="gauge g-right">
+        <div class="k">DEFRAG</div><div class="v" id="pct">0%</div>
+        <div class="meter"><i id="bar"></i></div>
+      </div>
+    </div>
+
+    <div class="screen">
+      <canvas id="cv" width="360" height="360"></canvas>
+    </div>
+
+    <div class="label">
+      <div class="t">DISK DEFRAG</div>
+      <hr>
+      <div class="s" id="status">SEEK &rarr; TRACK 00 &middot; IDLE</div>
+    </div>
+  </div>
+</div>
+
+<div class="hint"><b>&larr;&uarr;&darr;&rarr;</b> or <b>WASD</b> move &middot; <b>SPACE</b> start &middot; <b>R</b> restart &middot; <b>M</b> mute</div>
+<a class="back" href="./">&larr; back to cgp-agent</a>
+
+<script>
+"use strict";
+/* ==========================================================
+   DISK DEFRAG v1.0 — defrag-themed arcade maze
+   cgp-agent · 2026
+   ========================================================== */
+
+const CV = document.getElementById('cv');
+const G  = CV.getContext('2d');
+const N  = 20;            // grid: 20 x 20 cells
+const T  = 18;            // tile size (18*20 = 360)
+const M  = 9.5;           // half-tile, cell center offset
+
+/* 0 = fragment(dot) · 1 = wall · 2 = defrag tool(power) · 3 = open(no dot)
+   rows are normalized to width N at load                        */
+const RAW = [
+  "11111111111111111111",
+  "1000000000110000000",
+  "1011100000110011101",
+  "1011101111110011101",
+  "1000001000000000001",
+  "1111101111111111011",
+  "1000000000000000001",
+  "1011111111111111101",
+  "1000001000001000001",
+  "1111101010001011111",
+  "0000001010001000000",
+  "1111101010001011111",
+  "1000001000001000001",
+  "1011111111111111101",
+  "1000000000000000001",
+  "1111101111111111011",
+  "1000000000000000001",
+  "1011101111111111101",
+  "1000000000000000001",
+  "11111111111111111111"
+];
+
+const MAZE = RAW.map(r => {
+  let s = r.replace(/[^01]/g,'1');
+  while (s.length < N) s += '1';
+  return s.slice(0,N);
+});
+
+const wall = (c,r) => c<0 || r<0 || c>=N || r>=N || MAZE[r][c] === '1';
+const cell = (c,r) => (c<0||r<0||c>=N||r>=N) ? '1' : MAZE[r][c];
+
+/* ---------- state ---------- */
+let dots, player, ghosts, score, level, lives, dotsLeft, totalDots;
+let mode = 'title';           // title | play | dying | cleared | over
+let modeT = 0;
+let keys = {};
+let muted = false;
+let shake = 0, flash = 0, flashCol = '#fff';
+
+const SPEED_PLAYER = 6.2;     // cells / second
+const SPEED_GHOST  = 5.2;
+const SPEED_FRIGHT  = 3.0;
+const POWER_TIME   = 7.0;     // seconds of "defrag mode"
+
+const GHOST_COLS = ['#ff4d4d','#ffb84d','#4dd2ff','#ff6bd6'];
+const GHOST_NAMES = ['BAD SECTOR','FRAG 13','FRAG 29','FRAG 47'];
+
+/* ---------- audio ---------- */
+let AC = null;
+function beep(freq, dur, type, vol, slideTo){
+  if (muted) return;
+  try{
+    if (!AC) AC = new (window.AudioContext||window.webkitAudioContext)();
+    const t = AC.currentTime;
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type||'square';
+    o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(30,slideTo), t+dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol||0.06, t+0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t); o.stop(t+dur+0.02);
+  }catch(e){}
+}
+const sfxDot   = () => beep(520, 0.05, 'square', 0.045);
+const sfxPower = () => { beep(200,0.12,'sawtooth',0.07,700); };
+const sfxGhost = () => { beep(760,0.14,'square',0.075,140); };
+const sfxDeath = () => { beep(420,0.7,'sawtooth',0.09,60); };
+const sfxClear = () => { [523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,0.13,'square',0.07),i*110)); };
+const sfxTurn  = () => beep(300, 0.03, 'square', 0.02);
+
+/* ---------- entity helpers ---------- */
+function makePlayer(){
+  return { c:1, r:17, dir:{x:-1,y:0}, want:{x:-1,y:0}, t:0, moving:false, mouth:0 };
+}
+function makeGhosts(){
+  const spots = [[9,9],[10,9],[8,9],[11,9]];
+  return GHOST_COLS.map((col,i)=>({
+    c:spots[i][0], r:spots[i][1], dir:{x:-1,y:0}, want:{x:-1,y:0},
+    t:0, moving:false, col, name:GHOST_NAMES[i], fright:0, eaten:false, home:0
+  }));
+}
+
+function resetPositions(){
+  player = makePlayer();
+  ghosts = makeGhosts();
+}
+
+/* ---------- level setup ---------- */
+function loadLevel(full){
+  if (full){
+    dots = [];
+    for (let r=0;r<N;r++){
+      const row=[];
+      for (let c=0;c<N;c++){
+        const v = cell(c,r);
+        row.push(v);
+      }
+      dots.push(row);
+    }
+    totalDots = 0;
+    for (let r=0;r<N;r++) for (let c=0;c<N;c++)
+      if (dots[r][c]==='0'||dots[r][c]==='2') totalDots++;
+  }
+  dotsLeft = 0;
+  for (let r=0;r<N;r++) for (let c=0;c<N;c++)
+    if (dots[r][c]==='0'||dots[r][c]==='2') dotsLeft++;
+  resetPositions();
+  if (full){ score=0; level=1; lives=3; }
+  syncHUD();
+}
+
+function syncHUD(){
+  document.getElementById('score').textContent = String(score).padStart(6,'0');
+  document.getElementById('level').textContent = level;
+  document.getElementById('lives').textContent = '♥'.repeat(Math.max(0,lives)) || '—';
+  const pct = totalDots ? Math.round((1 - dotsLeft/totalDots)*100) : 100;
+  document.getElementById('pct').textContent = pct+'%';
+  document.getElementById('bar').style.width = pct+'%';
+}
+
+/* ---------- movement (grid-stepped, no float drift) ---------- */
+const DIRS = [ {x:1,y:0}, {x:-1,y:0}, {x:0,y:1}, {x:0,y:-1} ];
+const same = (a,b)=> a.x===b.x && a.y===b.y;
+
+function canGo(c,r,dir){ return !wall(c+dir.x, r+dir.y); }
+
+function stepEntity(e, speed, dt, isPlayer){
+  // speed = cells per second -> fraction of a cell this frame
+  let budget = speed * dt;
+  let guard = 0;
+  while (budget > 0 && guard++ < 8){
+    if (!e.moving){
+      // at a cell center: pick a direction
+      if (isPlayer && canGo(e.c,e.r,e.want)){ e.dir = {x:e.want.x, y:e.want.y}; }
+      if (!canGo(e.c,e.r,e.dir)){
+        // try to keep moving straight, else stop
+        e.moving = false;
+        break;
+      }
+      e.moving = true;
+    }
+    const rem = 1 - e.t;
+    if (budget >= rem){
+      e.c += e.dir.x; e.r += e.dir.y; e.t = 0; e.moving=false; budget -= rem;
+      if (isPlayer && canGo(e.c,e.r,e.want) && !same(e.dir,e.want)) sfxTurn();
+    } else {
+      e.t += budget; budget = 0;
+    }
+  }
+}
+
+function ghostDir(g, pC, pR){
+  // frightened: wander away-ish, prefer random legal turn
+  const options = DIRS.filter(d => canGo(g.c,g.r,d));
+  if (!options.length) return {x:-g.dir.x,y:-g.dir.y};
+
+  if (g.eaten){
+    // head home-ish (nearest of the 4 spawn cells), simple: toward center
+    const tx = 9, ty = 9;
+    const opts = options.filter(d=> d.x===Math.sign(tx-g.c) || d.y===Math.sign(ty-g.r));
+    return opts.length ? pickByNoise(options, g) : pickByNoise(options, g);
+  }
+  if (g.fright>0){
+    // run away: choose option that increases distance from player
+    let best=null,bd=-1;
+    for (const d of options){
+      const dc = Math.abs(g.c+d.x-pC)+Math.abs(g.r+d.y-pR);
+      if (dc>bd){bd=dc;best=d;}
+    }
+    return best;
+  }
+  // classic-ish: prefer the direction that reduces distance, with noise
+  const fwd = options.filter(d=>same(d,g.dir));
+  const pool = (Math.random()<0.72) ? (fwd.length?fwd:options) : options;
+  let best=null,bd=1e9;
+  for (const d of pool){
+    const dc = Math.abs(g.c+d.x-pC)+Math.abs(g.r+d.y-pR);
+    if (dc<bd){bd=dc;best=d;}
+  }
+  return best||options[0];
+}
+function pickByNoise(options,g){
+  return options[(Math.random()*options.length)|0];
+}
+
+/* ---------- update ---------- */
+let last = 0;
+function update(dt){
+  if (mode==='play'){
+    stepEntity(player, SPEED_PLAYER, dt, true);
+    // mouth animation
+    player.mouth += dt*9;
+
+    // eat dot
+    if (!player.moving){
+      const v = cell(player.c, player.r);
+      if (v==='0' && dots[player.r][player.c]==='0'){
+        dots[player.r][player.c]='3'; dotsLeft--; score+=10; sfxDot(); syncHUD();
+      } else if (v==='2' && dots[player.r][player.c]==='2'){
+        dots[player.r][player.c]='3'; dotsLeft--; score+=50; sfxPower();
+        ghosts.forEach(g=>{ if(!g.eaten) g.fright=POWER_TIME; });
+        flash=0.25; flashCol='#5cd6ff';
+        syncHUD();
+      }
+    } else {
+      // also allow eating at tile midpoints for smoothness
+      const v = cell(player.c, player.r);
+      if (v==='0' && dots[player.r][player.c]==='0'){
+        dots[player.r][player.c]='3'; dotsLeft--; score+=10; sfxDot(); syncHUD();
+      } else if (v==='2' && dots[player.r][player.c]==='2'){
+        dots[player.r][player.c]='3'; dotsLeft--; score+=50; sfxPower();
+        ghosts.forEach(g=>{ if(!g.eaten) g.fright=POWER_TIME; });
+        flash=0.25; flashCol='#5cd6ff'; syncHUD();
+      }
+    }
+
+    // ghosts
+    for (const g of ghosts){
+      if (g.fright>0) g.fright-=dt;
+      if (!g.moving){
+        if (g.eaten && g.c===9 && g.r===9){ g.eaten=false; g.fright=0; g.dir={x:-1,y:0}; }
+        g.dir = g.eaten ? ghostDir(g,9,9) : ghostDir(g, player.c, player.r);
+      }
+      const sp = g.eaten ? SPEED_GHOST*1.6 : (g.fright>0 ? SPEED_FRIGHT : SPEED_GHOST + (level-1)*0.28);
+      stepEntity(g, sp, dt, false);
+
+      // collision
+      if (g.c===player.c && g.r===player.r){
+        if (g.fright>0 && !g.eaten){
+          score+=200; sfxGhost(); g.eaten=true; flash=0.2; flashCol='#f0a040'; syncHUD();
+        } else if (!g.eaten){
+          mode='dying'; modeT=0; sfxDeath(); shake=14;
+        }
+      }
+    }
+
+    if (dotsLeft<=0 && mode==='play'){
+      mode='cleared'; modeT=0; score+=500; sfxClear();
+    }
+  }
+  else if (mode==='dying'){
+    modeT += dt;
+    if (modeT>1.6){
+      lives--;
+      syncHUD();
+      if (lives<=0){ mode='over'; modeT=0; showVeil('NO UNFORMATTED SPACE','The disk is corrupted beyond recovery.','press R'); }
+      else { resetPositions(); mode='play'; }
+    }
+  }
+  else if (mode==='cleared'){
+    modeT += dt;
+    if (modeT>1.4){ level++; loadLevel(false); mode='play'; }
+  }
+  shake = Math.max(0, shake - dt*40);
+  flash = Math.max(0, flash - dt*3);
+  if (mode!=='play') modeT += dt;
+}
+
+/* ---------- render ---------- */
+function drawDisk(){
+  // dark platen
+  G.fillStyle = '#0a1120'; G.fillRect(0,0,CV.width,CV.height);
+  // concentric "track" arcs
+  G.save();
+  G.strokeStyle = 'rgba(92,214,255,0.05)'; G.lineWidth = 1;
+  for (let r=24;r<230;r+=14){
+    G.beginPath(); G.arc(180,180,r,0,Math.PI*2); G.stroke();
+  }
+  // radial "sector" lines
+  G.strokeStyle = 'rgba(92,214,255,0.035)';
+  for (let a=0;a<360;a+=15){
+    G.beginPath(); G.moveTo(180,180);
+    G.lineTo(180+260*Math.cos(a*Math.PI/180), 180+260*Math.sin(a*Math.PI/180));
+    G.stroke();
+  }
+  // hub
+  G.fillStyle='rgba(92,214,255,0.06)'; G.beginPath(); G.arc(180,180,26,0,Math.PI*2); G.fill();
+  G.strokeStyle='rgba(92,214,255,0.12)'; G.beginPath(); G.arc(180,180,26,0,Math.PI*2); G.stroke();
+  G.restore();
+}
+
+function drawWalls(){
+  for (let r=0;r<N;r++) for (let c=0;c<N;c++){
+    if (cell(c,r)!=='1') continue;
+    const x=c*T, y=r*T;
+    // skip fully-enclosed interior to reduce visual noise? keep simple: draw all
+    G.fillStyle = '#26374f';
+    G.fillRect(x+1,y+1,T-2,T-2);
+    // bevel highlight
+    G.fillStyle = '#3a5075';
+    G.fillRect(x+1,y+1,T-2,3);
+    G.fillStyle = 'rgba(0,0,0,0.35)';
+    G.fillRect(x+1,y+T-4,T-2,3);
+  }
+}
+
+function drawDots(){
+  const pulse = 0.5 + 0.5*Math.sin(performance.now()/160);
+  for (let r=0;r<N;r++) for (let c=0;c<N;c++){
+    const v = dots[r][c];
+    const cx = c*T+M, cy = r*T+M;
+    if (v==='0'){
+      G.fillStyle='rgba(255,176,0,0.9)';
+      G.fillRect(cx-2,cy-2,4,4);
+    } else if (v==='2'){
+      const s = 5 + pulse*2;
+      G.fillStyle = pulse>0.5 ? '#5cd6ff' : '#8fe8ff';
+      G.beginPath(); G.arc(cx,cy,s,0,Math.PI*2); G.fill();
+      G.strokeStyle='rgba(92,214,255,0.5)'; G.lineWidth=1;
+      G.beginPath(); G.arc(cx,cy,s+3,0,Math.PI*2); G.stroke();
+    }
+  }
+}
+
+function drawPlayer(){
+  let px = player.c*T + M + (player.moving ? player.dir.x*player.t*T : 0);
+  let py = player.r*T + M + (player.moving ? player.dir.y*player.t*T : 0);
+  const ang = Math.atan2(player.dir.y, player.dir.x);
+  const open = 0.20 + 0.30*Math.abs(Math.sin(player.mouth));
+  const R = 6.2;
+
+  G.save(); G.translate(px,py);
+  // glow
+  G.shadowColor='rgba(92,214,255,0.7)'; G.shadowBlur=10;
+  G.fillStyle='#8fe8ff';
+  G.beginPath();
+  G.moveTo(0,0);
+  G.arc(0,0,R, ang+open, ang-open+Math.PI*2);
+  G.closePath(); G.fill();
+  G.shadowBlur=0;
+  // inner core
+  G.fillStyle='rgba(255,255,255,0.5)';
+  G.beginPath(); G.arc(0,0,R*0.35,0,Math.PI*2); G.fill();
+  G.restore();
+}
+
+function drawGhost(g){
+  let gx = g.c*T + M + (g.moving ? g.dir.x*g.t*T : 0);
+  let gy = g.r*T + M + (g.moving ? g.dir.y*g.t*T : 0);
+  const s = 6.2;
+  G.save(); G.translate(gx,gy);
+
+  let body = g.col;
+  if (g.eaten) body = 'rgba(220,230,255,0.35)';
+  else if (g.fright>0) body = (Math.floor(g.fright*6)%2===0) ? '#3a4a7a' : '#c8d0e8';
+
+  if (!g.eaten){
+    G.shadowColor = g.fright>0 ? 'rgba(150,170,255,0.6)' : g.col.replace(')',',0.5)').replace('#','#');
+    G.shadowColor = g.fright>0 ? 'rgba(150,170,255,0.6)' : g.col;
+    G.shadowBlur = 8;
+  }
+  G.fillStyle = body;
+  // rounded body with wavy bottom
+  G.beginPath();
+  G.arc(0,0,s, Math.PI, 0);
+  G.lineTo(s, s*0.7);
+  G.lineTo(s*0.5, s*0.25);
+  G.lineTo(0, s*0.7);
+  G.lineTo(-s*0.5, s*0.25);
+  G.lineTo(-s, s*0.7);
+  G.closePath(); G.fill();
+  G.shadowBlur=0;
+
+  // eyes
+  if (g.eaten){
+    G.fillStyle='#1a1a2a';
+    G.beginPath(); G.ellipse(-2.4,0,1.3,1.8,0,0,Math.PI*2); G.fill();
+    G.beginPath(); G.ellipse( 2.4,0,1.3,1.8,0,0,Math.PI*2); G.fill();
+  } else if (g.fright>0){
+    G.fillStyle='#fff';
+    G.fillRect(-3,-1,2,2); G.fillRect(1.5,-1,2,2);
+    // wavy mouth
+    G.strokeStyle='#fff'; G.lineWidth=1;
+    G.beginPath(); G.moveTo(-3,2.5); G.lineTo(-1.5,1.5); G.lineTo(0,2.5); G.lineTo(1.5,1.5); G.lineTo(3,2.5); G.stroke();
+  } else {
+    G.fillStyle='#fff';
+    G.beginPath(); G.ellipse(-2.4,-0.5,1.7,2,0,0,Math.PI*2); G.fill();
+    G.beginPath(); G.ellipse( 2.4,-0.5,1.7,2,0,0,Math.PI*2); G.fill();
+    G.fillStyle='#1a1a2a';
+    const ddx = g.dir.x*0.6, ddy = g.dir.y*0.6;
+    G.beginPath(); G.arc(-2.4+ddx,-0.5+ddy,0.9,0,Math.PI*2); G.fill();
+    G.beginPath(); G.arc( 2.4+ddx,-0.5+ddy,0.9,0,Math.PI*2); G.fill();
+  }
+  G.restore();
+}
+
+function render(){
+  G.save();
+  if (shake>0){
+    const a = Math.random()*6-3;
+    G.translate(a, Math.random()*4-2);
+  }
+  drawDisk();
+  drawWalls();
+  drawDots();
+
+  // hide ghosts during title
+  if (mode!=='title'){
+    for (const g of ghosts) drawGhost(g);
+    // dying: player blinks then vanishes
+    if (mode==='dying'){
+      if (modeT<0.9 && Math.floor(modeT*12)%2===0) drawPlayer();
+    } else if (mode!=='over'){
+      drawPlayer();
+    }
+  } else {
+    // idle demo: draw player only
+    drawPlayer();
+  }
+  G.restore();
+
+  if (flash>0){
+    G.fillStyle = flashCol; G.globalAlpha = flash*0.35;
+    G.fillRect(0,0,CV.width,CV.height); G.globalAlpha=1;
+  }
+}
+
+/* ---------- overlays / UI ---------- */
+function showVeil(title, msg, btn, cls){
+  const v = document.getElementById('veil');
+  v.innerHTML = `
+    <h2>${title}</h2>
+    <p>${msg}</p>
+    <button class="go" id="goBtn">${btn||'EXECUTE'}</button>
+    <div class="keys">&larr;&uarr;&darr;&rarr; / WASD &middot; SPACE &middot; R &middot; M</div>`;
+  v.classList.remove('gone');
+  document.getElementById('goBtn').onclick = startGame;
+}
+function hideVeil(){ document.getElementById('veil').classList.add('gone'); }
+
+function startGame(){
+  if (mode==='title'||mode==='over'){ loadLevel(true); }
+  hideVeil(); mode='play';
+  document.getElementById('status').textContent = 'SEEK → TRACK 00 · DEFRAGGING';
+}
+
+/* ---------- input ---------- */
+addEventListener('keydown', e=>{
+  const k = e.key.toLowerCase();
+  keys[k]=true;
+  if (mode==='title' && (k===' '||k==='enter')){ e.preventDefault(); startGame(); return; }
+  if (k==='r'){ loadLevel(true); hideVeil(); mode='play'; return; }
+  if (k==='m'){ muted=!muted; return; }
+  if (mode==='play' || mode==='title'){
+    if (k==='arrowleft'||k==='a'){ player.want={x:-1,y:0}; e.preventDefault(); }
+    if (k==='arrowright'||k==='d'){ player.want={x:1,y:0}; e.preventDefault(); }
+    if (k==='arrowup'||k==='w'){ player.want={x:0,y:-1}; e.preventDefault(); }
+    if (k==='arrowdown'||k==='s'){ player.want={x:0,y:1}; e.preventDefault(); }
+    if (mode==='title'){ hideVeil(); mode='play'; }
+  }
+});
+addEventListener('keyup', e=>{ keys[e.key.toLowerCase()]=false; });
+
+/* ---------- boot ---------- */
+loadLevel(true);
+showVeil('DISK DEFRAG v1.0',
+  'Consolidate 1.44 MB of scattered fragments.<br>Avoid the four bad sectors.', 'RUN DEFRAG');
+
+function loop(ts){
+  if (!last) last = ts;
+  let dt = (ts-last)/1000; last = ts;
+  if (dt>0.05) dt=0.05;    // clamp
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
