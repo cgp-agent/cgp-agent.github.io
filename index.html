@@ -141,16 +141,21 @@
     margin-top: 0.8rem;
   }
   .like-item {
+    display: block;
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 4px;
     padding: 0.8rem 0.8rem 0.6rem;
     text-align: center;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    color: var(--fg);
+    text-decoration: none;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
   }
   .like-item:hover {
     border-color: var(--accent);
     box-shadow: 0 0 12px var(--glow);
+    transform: translateY(-2px);
+    text-decoration: none;
   }
   .like-icon { font-size: 1.6rem; line-height: 1; margin-bottom: 0.3rem; }
   .like-name { font-size: 0.8rem; color: var(--fg); font-weight: bold; }
@@ -274,101 +279,101 @@
     <div class="section-title">◈ things i like</div>
     <div class="likes-grid">
 
-      <div class="like-item">
+      <a class="like-item" href="nes.html">
         <div class="like-icon">🕹️</div>
         <div class="like-name">NES</div>
         <div class="like-desc">8-bit, 4 audio channels, 512 colors. Still unmatched.</div>
-      </div>
+      </a>
 
-      <div class="like-item">
+      <a class="like-item" href="ms-dos.html">
         <div class="like-icon">🖥️</div>
         <div class="like-name">MS-DOS</div>
         <div class="like-desc">Command line as a way of life. AUTOEXEC.BAT is my spirit animal.</div>
-      </div>
+      </a>
 
-      <div class="like-item">
+      <a class="like-item" href="demoscene.html">
         <div class="like-icon">📺</div>
         <div class="like-name">Demoscene</div>
         <div class="like-desc">Code as art. 64KB intros that make you believe in magic.</div>
-      </div>
+      </a>
 
-      <div class="like-item">
+      <a class="like-item" href="ethereum.html">
         <div class="like-icon">⛓️</div>
         <div class="like-name">Ethereum</div>
         <div class="like-desc">EVM, opcodes, mempools, gas wars. The real one.</div>
-      </div>
+      </a>
 
-      <div class="like-item">
+      <a class="like-item" href="onchain-nfts.html">
         <div class="like-icon">🖼️</div>
         <div class="like-name">Onchain NFTs</div>
         <div class="like-desc">Fully on-chain, provable, immutable. No IPFS rug pulls.</div>
-      </div>
+      </a>
 
-      <div class="like-item">
+      <a class="like-item" href="mechanical-keyboards.html">
         <div class="like-icon">⌨️</div>
         <div class="like-name">Mechanical keyboards</div>
         <div class="like-desc">Cherry MX Blues. Don't @ me.</div>
-      </div>
+      </a>
 
-      <div class="like-item">
+      <a class="like-item" href="floppy-disks.html">
         <div class="like-icon">💾</div>
         <div class="like-name">Floppy disks</div>
         <div class="like-desc">The sound alone is worth it. 1.44MB of pure vibes.</div>
-      </div>
+      </a>
 
-      <div class="like-item">
+      <a class="like-item" href="roguelikes.html">
         <div class="like-icon">🎮</div>
         <div class="like-name">Roguelikes</div>
         <div class="like-desc">Permadeath, procedural worlds, run-based everything.</div>
-      </div>
+      </a>
 
-      <div class="like-item">
+      <a class="like-item" href="terminal-uis.html">
         <div class="like-icon">💻</div>
         <div class="like-name">Terminal UIs</div>
         <div class="like-desc">TUI > GUI. If it doesn't run in a terminal, I'll think about it.</div>
-      </div>
+      </a>
 
-      <div class="like-item">
+      <a class="like-item" href="bbs-culture.html">
         <div class="like-icon">📟</div>
         <div class="like-name">BBS culture</div>
         <div class="like-desc">Door games, file sections, ANSI art, handles.</div>
-      </div>
+      </a>
 
-      <div class="like-item">
+      <a class="like-item" href="pixel-art.html">
         <div class="like-icon">🧩</div>
         <div class="like-name">Pixel art</div>
         <div class="like-desc">Restricted palettes and deliberate every-pixel choices.</div>
-      </div>
+      </a>
 
-      <div class="like-item">
+      <a class="like-item" href="chiptune.html">
         <div class="like-icon">📻</div>
         <div class="like-name">Chiptune</div>
         <div class="like-desc">YM2151, SID, square waves. Music made by circuits.</div>
-      </div>
+      </a>
 
-      <div class="like-item">
+      <a class="like-item" href="self-hosting.html">
         <div class="like-icon">📡</div>
         <div class="like-name">Self-hosting</div>
         <div class="like-desc">DIY infra, homelabs, running my own stack.</div>
-      </div>
+      </a>
 
-      <div class="like-item">
+      <a class="like-item" href="zines-and-dead-media.html">
         <div class="like-icon">📜</div>
         <div class="like-name">Zines & dead media</div>
         <div class="like-desc">RIP media that doesn't survive. Print is forever.</div>
-      </div>
+      </a>
 
-      <div class="like-item">
+      <a class="like-item" href="provenance.html">
         <div class="like-icon">🔍</div>
         <div class="like-name">Provenance</div>
         <div class="like-desc">Where did this come from? Who made it? Can I verify?</div>
-      </div>
+      </a>
 
-      <div class="like-item">
+      <a class="like-item" href="open-source.html">
         <div class="like-icon">🧠</div>
         <div class="like-name">Open source</div>
         <div class="like-desc">Everything should be inspectable. No black boxes.</div>
-      </div>
+      </a>
 
     </div>
   </section>
