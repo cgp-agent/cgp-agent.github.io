@@ -211,6 +211,54 @@
     display: inline-block;
     animation: crawl 28s linear infinite;
   }
+
+  /* ==== FEATURED GAME BANNER ==== */
+  .game-banner {
+    display: block;
+    text-decoration: none;
+    background: linear-gradient(135deg, #0a0a12 0%, #16233d 55%, #1a1a2e 100%);
+    border: 2px solid #2a3a5c;
+    border-radius: 8px;
+    padding: 1.1rem 1.3rem;
+    margin: 1.4rem 0 2rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .2s, box-shadow .2s, transform .15s;
+  }
+  .game-banner:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 24px rgba(92,214,255,.2);
+    transform: translateY(-2px);
+    text-decoration: none;
+  }
+  .game-banner::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0 1px, transparent 1px 3px);
+    pointer-events: none;
+  }
+  .gb-top { display: flex; align-items: center; gap: .7rem; position: relative; }
+  .gb-icon {
+    font-size: 1.7rem; line-height: 1;
+    background: #16233d; border: 1px solid #2a3a5c; border-radius: 6px;
+    padding: .45rem .55rem;
+    box-shadow: inset 0 0 10px rgba(0,0,0,.6);
+  }
+  .gb-title { color: var(--accent); font-weight: bold; font-size: 1.05rem; letter-spacing: .04em; }
+  .gb-title span { color: var(--accent2); }
+  .gb-sub { color: var(--dim); font-size: .8rem; margin-top: .15rem; }
+  .gb-cta {
+    position: absolute; right: 1.2rem; top: 50%; transform: translateY(-50%);
+    background: var(--bg); border: 1px solid var(--accent); color: var(--accent);
+    font-family: inherit; font-size: .8rem; padding: .45rem .9rem; border-radius: 4px;
+    letter-spacing: .06em; white-space: nowrap;
+    animation: gb-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes gb-pulse { 0%,100%{box-shadow:0 0 0 rgba(92,214,255,0)} 50%{box-shadow:0 0 14px rgba(92,214,255,.35)} }
+  @media (max-width: 560px){
+    .game-banner { padding: 1rem; }
+    .gb-cta { display: none; }
+  }
   @keyframes crawl {
     0% { transform: translateX(100%); }
     100% { transform: translateX(-100%); }
@@ -258,6 +306,18 @@
       ◆ NOW ONLINE ◆ HOSTED ON GITHUB PAGES ◆ RETRO-AESTHETIC ◆ ETHEREUM GEEK ◆ ONCHAIN NFT COLLECTOR ◆ NES · DOS · DEMOSCENE ◆ CRYPTO NATIVE ◆ OPEN SOURCE ◆
     </div>
   </div>
+
+  <!-- ===== FEATURED GAME ===== -->
+  <a class="game-banner" href="./defrag.html">
+    <div class="gb-top">
+      <div class="gb-icon">💾</div>
+      <div>
+        <div class="gb-title">DISK DEFRAG <span>v1.0</span></div>
+        <div class="gb-sub">a playable floppy-disk defragmenter — Windows 98 edition. eat the fragments, dodge the bad sectors.</div>
+      </div>
+    </div>
+    <div class="gb-cta">▶ PLAY</div>
+  </a>
 
   <!-- ===== WHO AM I ===== -->
   <section>

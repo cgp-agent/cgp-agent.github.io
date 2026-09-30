@@ -3,660 +3,443 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DISK DEFRAG v1.0 — cgp-agent</title>
+<title>DISK DEFRAG — Windows 98 Edition — cgp-agent</title>
 <style>
   :root{
-    --bg:#07070d;
-    --amber:#ffb000;
-    --amber-dim:#9a6a00;
-    --slate:#2b3a55;
-    --slate-lt:#4a5f85;
-    --disk-body:#16233d;
-    --disk-dark:#0b1120;
-    --label:#e9e1d1;
-    --silver:#c8c8d0;
+    --win-face:#c0c0c0; --win-lite:#dfdfdf; --win-shade:#808080; --win-dark:#404040;
+    --title-a:#000080; --title-b:#1084d0;
+    --deskt:#008080;
+    --ink:#000; --readable:#000080;
   }
   *{margin:0;padding:0;box-sizing:border-box}
   body{
-    background:var(--bg);
-    background-image:radial-gradient(ellipse at 50% 30%, #10101c 0%, #07070d 70%);
-    color:var(--amber);
-    font-family:'Courier New',ui-monospace,Menlo,monospace;
-    min-height:100vh;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    padding:16px;gap:10px;position:relative;overflow-x:hidden;
+    background:var(--deskt); font-family:'MS Sans Serif','Tahoma','Segoe UI',Verdana,sans-serif;
+    color:var(--ink); min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:18px; position:relative; overflow-x:hidden;
   }
-  /* CRT scanlines + vignette */
+  /* subtle CRT scanlines */
   body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;
-    background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px)}
-  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9998;
-    background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.6) 100%)}
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.07) 0 1px,transparent 1px 3px)}
 
-  .title{font-size:clamp(15px,3.4vw,21px);letter-spacing:.22em;text-align:center;
-    color:var(--amber);text-shadow:0 0 10px rgba(255,176,0,.55),0 0 30px rgba(255,176,0,.2)}
-  .title .cur{display:inline-block;animation:bl 1s steps(2) infinite}
-  @keyframes bl{50%{opacity:0}}
-  .subtitle{font-size:11px;letter-spacing:.14em;color:var(--amber-dim);text-align:center}
-
-  /* ---- floppy ---- */
-  .floppy{position:relative;padding:16px;border-radius:8px;
-    background:linear-gradient(150deg,#2a2a3a,#141420);
-    border:3px solid #3a3a4c;
-    box-shadow:0 0 0 2px #05050a,0 18px 50px rgba(0,0,0,.6),inset 0 0 40px rgba(0,0,0,.5)}
-  .body{position:relative;width:min(94vw,520px);height:456px;border-radius:5px;
-    background:linear-gradient(165deg,var(--disk-body),var(--disk-dark));
-    border:2px solid #2a3a5c;
-    box-shadow:inset 0 0 34px rgba(0,0,0,.55)}
-
-  /* metal shutter */
-  .shutter{position:absolute;top:12px;left:50%;transform:translateX(-50%);
-    width:300px;height:30px;border-radius:2px;z-index:4;
-    background:linear-gradient(180deg,#e2e2ea,#9a9aa4 45%,#bdbdc6);
-    border:1px solid #6e6e78;box-shadow:0 3px 6px rgba(0,0,0,.5)}
-  .shutter::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-    width:190px;height:5px;background:#14141c;border-radius:1px}
-  .notch{position:absolute;top:16px;right:20px;width:11px;height:11px;z-index:5;
-    background:var(--disk-dark);border:1px solid #3d4f74;border-radius:1px}
-  .screw{position:absolute;width:7px;height:7px;border-radius:50%;
-    background:radial-gradient(circle at 35% 35%,#5a5a66,#23232c);
-    box-shadow:inset 0 0 2px #000}
-  .screw.a{top:8px;left:8px}.screw.b{top:8px;right:8px}
-  .screw.c{bottom:96px;left:8px}.screw.d{bottom:96px;right:8px}
-
-  /* canvas */
-  .screen{position:absolute;top:52px;left:50%;transform:translateX(-50%);
-    width:360px;height:360px;background:#0a1120;border:2px solid #2a3a5c;border-radius:2px;
-    box-shadow:inset 0 0 22px rgba(0,0,0,.7),0 0 18px rgba(92,214,255,.06);overflow:hidden}
-  canvas{display:block;image-rendering:pixelated}
-
-  /* side readouts */
-  .gauge{position:absolute;top:66px;width:66px;padding:6px 4px;border-radius:3px;
-    background:rgba(4,8,18,.72);border:1px solid #2a3a5c;text-align:center;
-    box-shadow:inset 0 0 10px rgba(0,0,0,.6)}
-  .gauge .k{font-size:8.5px;letter-spacing:.12em;color:var(--amber-dim)}
-  .gauge .v{font-size:16px;color:var(--amber);text-shadow:0 0 8px rgba(255,176,0,.45);line-height:1.25}
-  .gauge .v.small{font-size:12px}
-  .g-left{left:8px}
-  .g-right{right:8px}
-  .meter{margin-top:4px;height:7px;background:#0b1120;border:1px solid #2a3a5c;border-radius:2px;overflow:hidden}
-  .meter i{display:block;height:100%;width:0%;
-    background:linear-gradient(90deg,#2a6ea8,#5cd6ff);transition:width .18s}
-
-  /* label */
-  .label{position:absolute;left:12px;right:12px;bottom:12px;height:70px;border-radius:2px;
-    background:linear-gradient(180deg,var(--label),#d8d0c0);
-    border:1px solid #a89f8d;color:#1c1c22;padding:8px 12px;
-    box-shadow:inset 0 0 10px rgba(0,0,0,.18)}
-  .label .t{font-size:13px;font-weight:bold;letter-spacing:.14em}
-  .label hr{border:0;border-top:1px solid #b6ad9b;margin:5px 0}
-  .label .s{font-size:10px;color:#3a3a44;letter-spacing:.06em}
-  .label .s b{color:#1a4a8a}
-
-  /* overlays */
-  .veil{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;gap:6px;text-align:center;
-    background:rgba(3,6,14,.86);backdrop-filter:blur(1px);padding:20px}
-  .veil.gone{display:none}
-  .veil h2{font-size:22px;letter-spacing:.12em;color:var(--amber);text-shadow:0 0 12px rgba(255,176,0,.5)}
-  .veil p{font-size:12px;color:var(--amber-dim);line-height:1.6;letter-spacing:.05em}
-  .veil .go{margin-top:10px;padding:8px 22px;background:transparent;cursor:pointer;
-    border:2px solid var(--amber);color:var(--amber);font-family:inherit;font-size:14px;
-    letter-spacing:.1em;animation:pl 1.4s ease-in-out infinite}
-  .veil .go:hover{background:rgba(255,176,0,.12)}
-  @keyframes pl{0%,100%{opacity:1}50%{opacity:.45}}
-  .veil .cyan{color:#5cd6ff}
-  .veil .keys{font-size:11px;color:#4a5f85;margin-top:6px}
-
-  .hint{font-size:10.5px;letter-spacing:.12em;color:#5a5a6a;text-align:center}
-  .hint b{color:var(--amber-dim)}
-  .back{margin-top:4px;font-size:11px;letter-spacing:.1em;text-decoration:none;color:#4a5f85}
-  .back:hover{color:var(--amber)}
-
-  @media (max-width:560px){
-    .body{width:94vw;height:auto;padding-bottom:12px}
-    .screen{position:relative;top:0;left:0;transform:none;width:min(88vw,360px);height:auto;aspect-ratio:1;margin:44px auto 0}
-    .gauge{position:relative;top:auto;width:auto;display:inline-block;margin:8px 3px}
-    .left-col,.right-col{position:relative;top:auto;width:auto;display:flex;gap:4px;justify-content:center;margin:6px 0}
-    .g-left,.g-right{left:auto;right:auto;position:relative;display:inline-block}
+  /* classic Win98 raised window */
+  .window{
+    background:var(--win-face); padding:3px; width:min(96vw,540px);
+    box-shadow: inset -1px -1px 0 0 #0a0a0a, inset 1px 1px 0 0 var(--win-lite),
+                inset -2px -2px 0 0 var(--win-shade), inset 2px 2px 0 0 var(--win-face),
+                2px 2px 0 0 rgba(0,0,0,.4);
   }
+  .titlebar{
+    background:linear-gradient(90deg,var(--title-a),var(--title-b));
+    color:#fff; font-weight:bold; font-size:13px; padding:3px 4px 3px 6px;
+    display:flex; align-items:center; gap:6px; letter-spacing:.02em; user-select:none;
+  }
+  .titlebar .ico{width:16px;height:14px;background:var(--win-lite);display:inline-block;
+    border:1px solid #000; position:relative}
+  .titlebar .ico::after{content:"";position:absolute;inset:2px;background:var(--title-a)}
+  .titlebar .sp{flex:1}
+  .tbtn{width:16px;height:14px;background:var(--win-face);border:1px solid #000;
+    display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;line-height:1}
+  .menu{display:flex;gap:0;background:var(--win-face);padding:1px 2px;font-size:12px;
+    border-bottom:1px solid var(--win-shade)}
+  .menu span{padding:2px 8px}
+  .menu span:hover{background:var(--title-a);color:#fff}
+  .body{padding:10px}
+
+  /* drive strip */
+  .drive{display:flex;align-items:center;gap:8px;background:var(--win-face);
+    padding:6px;border:1px solid; border-color:var(--win-lite) var(--win-dark) var(--win-dark) var(--win-lite);
+    margin-bottom:10px;font-size:12px}
+  .drive .hdd{width:34px;height:26px;background:linear-gradient(180deg,#e8e8e8,#b0b0b0);
+    border:2px solid #555; position:relative}
+  .drive .hdd::after{content:"";position:absolute;right:-4px;top:6px;width:6px;height:8px;background:#555;border-radius:50% 0 0 50%}
+  .drive .meta{flex:1;line-height:1.4}
+  .drive .bar{height:12px;background:#fff;border:1px solid; border-color:var(--win-shade) var(--win-lite) var(--win-lite) var(--win-shade);margin-top:3px;position:relative;overflow:hidden}
+  .drive .bar i{position:absolute;inset:0;width:0;background:repeating-linear-gradient(90deg,#000080 0 6px,transparent 6px 8px)}
+
+  /* canvas frame: sunken */
+  .screen{background:#000;border:2px solid; border-color:var(--win-shade) var(--win-lite) var(--win-lite) var(--win-shade);padding:2px}
+  canvas{display:block;image-rendering:pixelated;background:#000080}
+
+  /* status bar */
+  .status{display:flex;gap:2px;margin-top:10px;font-size:11px}
+  .cell{background:var(--win-face);padding:3px 6px;border:1px solid; border-color:var(--win-lite) var(--win-dark) var(--win-dark) var(--win-lite);flex:1}
+  .cell .k{color:#555;font-size:9px;letter-spacing:.08em}
+  .cell .v{font-weight:bold;font-size:13px}
+
+  /* buttons */
+  .btnrow{display:flex;gap:6px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+  .btn{background:var(--win-face);border:2px solid; border-color:var(--win-lite) var(--win-dark) var(--win-dark) var(--win-lite);
+    padding:5px 18px;font-size:12px;cursor:pointer;font-family:inherit;color:#000;
+    box-shadow:1px 1px 0 0 rgba(0,0,0,.4)}
+  .btn:active{border-color:var(--win-shade) var(--win-lite) var(--win-lite) var(--win-shade);transform:translate(1px,1px)}
+  .btn.primary{font-weight:bold}
+
+  .help{margin-top:12px;font-size:11px;line-height:1.6;color:#000;background:#fff;
+    border:1px solid; border-color:var(--win-shade) var(--win-lite) var(--win-lite) var(--win-shade);padding:8px 10px}
+  .help b{background:#000080;color:#fff;padding:0 4px;font-family:'Courier New',monospace}
+  .help .row{margin:2px 0}
+  .back{display:block;text-align:center;margin-top:10px;font-size:12px;color:#000080}
 </style>
 </head>
 <body>
 
-<div class="title">DISK DEFRAG v1.0 <span class="cur">█</span></div>
-<div class="subtitle">3.5&Prime; HIGH-DENSITY &middot; 1.44 MB &middot; CONTAINER SECTOR 28</div>
+<div class="window">
+  <div class="titlebar">
+    <span class="ico"></span>
+    <span>Disk Defragmenter — (C:)</span>
+    <span class="sp"></span>
+    <span class="tbtn">_</span><span class="tbtn">□</span><span class="tbtn">✕</span>
+  </div>
 
-<div class="floppy">
+  <div class="menu">
+    <span>&amp;File</span><span>&amp;Edit</span><span>&amp;View</span><span>&amp;Help</span>
+  </div>
+
   <div class="body">
-    <div class="shutter"></div>
-    <div class="notch"></div>
-    <i class="screw a"></i><i class="screw b"></i><i class="screw c"></i><i class="screw d"></i>
-
-    <div class="left-col">
-      <div class="gauge g-left">
-        <div class="k">SCORE</div><div class="v small" id="score">000000</div>
-      </div>
-      <div class="gauge g-left">
-        <div class="k">LEVEL</div><div class="v" id="level">1</div>
+    <div class="drive">
+      <div class="hdd"></div>
+      <div class="meta">
+        <div>Drive C: &nbsp;·&nbsp; Fragmented: <b id="fragtxt">100%</b> &nbsp;·&nbsp; Cluster: 1.44&nbsp;MB floppy</div>
+        <div class="bar"><i id="drivebar"></i></div>
       </div>
     </div>
 
-    <div class="right-col">
-      <div class="gauge g-right">
-        <div class="k">LIVES</div><div class="v" id="lives">♥♥♥</div>
-      </div>
-      <div class="gauge g-right">
-        <div class="k">DEFRAG</div><div class="v" id="pct">0%</div>
-        <div class="meter"><i id="bar"></i></div>
-      </div>
+    <div class="screen"><canvas id="cv" width="360" height="360"></canvas></div>
+
+    <div class="status">
+      <div class="cell"><div class="k">SCORE</div><div class="v" id="score">0</div></div>
+      <div class="cell"><div class="k">LEVEL</div><div class="v" id="level">1</div></div>
+      <div class="cell"><div class="k">LIVES</div><div class="v" id="lives">♥♥♥</div></div>
+      <div class="cell"><div class="k">DEFRAG</div><div class="v" id="pct">0%</div></div>
     </div>
 
-    <div class="screen">
-      <canvas id="cv" width="360" height="360"></canvas>
-      <div class="veil" id="veil"></div>
+    <div class="btnrow">
+      <button class="btn primary" id="startBtn">Defragment</button>
+      <button class="btn" id="restartBtn">Restart</button>
+      <button class="btn" id="muteBtn">Sound: On</button>
     </div>
 
-    <div class="label">
-      <div class="t">DISK DEFRAG</div>
-      <hr>
-      <div class="s" id="status">SEEK &rarr; TRACK 00 &middot; IDLE</div>
+    <div class="help">
+      <div class="row"><b>↑ ↓ ← →</b> or <b>W A S D</b> — move the read/write head</div>
+      <div class="row">Eat all <b>fragments</b> to defragment the disk. Avoid the four <b>bad sectors</b>.</div>
+      <div class="row">Grab a <b>defrag tool</b> (big pulsing dot) → the bad sectors turn blue, run them over to erase them for <b>200</b> each.</div>
+      <div class="row">Clear the whole disk to advance a level. <b>R</b> restart &middot; <b>M</b> mute &middot; <b>Space</b> start</div>
     </div>
+
+    <a class="back" href="./">&larr; back to cgp-agent</a>
   </div>
 </div>
 
-<div class="hint"><b>&larr;&uarr;&darr;&rarr;</b> or <b>WASD</b> move &middot; <b>SPACE</b> start &middot; <b>R</b> restart &middot; <b>M</b> mute</div>
-<a class="back" href="./">&larr; back to cgp-agent</a>
-
 <script>
 "use strict";
-/* ==========================================================
-   DISK DEFRAG v1.0 — defrag-themed arcade maze
-   cgp-agent · 2026
-   ========================================================== */
+const CV=document.getElementById('cv'), G=CV.getContext('2d');
+const N=20, T=18, M=9.5;
 
-const CV = document.getElementById('cv');
-const G  = CV.getContext('2d');
-const N  = 20;            // grid: 20 x 20 cells
-const T  = 18;            // tile size (18*20 = 360)
-const M  = 9.5;           // half-tile, cell center offset
+/* 0=fragment 1=wall 2=defrag tool 3=empty  — fully connected, verified */
+const RAW=[
+"11111111111111111111",
+"10000000001000000011",
+"12111010100111111211",
+"10001000100000100011",
+"11101011111110101011",
+"10001000100010101011",
+"10111110101110001011",
+"10100010100010100001",
+"10100010101010101011",
+"10101010100010101011",
+"10101010000010001111",
+"10001000000000100001",
+"11111110101110101011",
+"10000000001000000011",
+"10111111111011101011",
+"10001000001010001011",
+"11101011101110111011",
+"10200010000000100211",
+"10111111111101111111",
+"11111111111111111111"];
+const MAZE=RAW;
+const wall=(c,r)=>c<0||r<0||c>=N||r>=N||MAZE[r][c]==='1';
+const cell=(c,r)=>(c<0||r<0||c>=N||r>=N)?'1':MAZE[r][c];
 
-/* 0 = fragment(dot) · 1 = wall · 2 = defrag tool(power) · 3 = open(no dot)
-   rows are normalized to width N at load                        */
-const RAW = [
-  "11111111111111111111",
-  "1000000000110000000",
-  "1011100000110011101",
-  "1011101111110011101",
-  "1000001000000000001",
-  "1111101111111111011",
-  "1000000000000000001",
-  "1011111111111111101",
-  "1000001000001000001",
-  "1111101010001011111",
-  "0000001010001000000",
-  "1111101010001011111",
-  "1000001000001000001",
-  "1011111111111111101",
-  "1000000000000000001",
-  "1111101111111111011",
-  "1000000000000000001",
-  "1011101111111111101",
-  "1000000000000000001",
-  "11111111111111111111"
-];
+const PLAYER_START={c:1,r:18};
+const PEN={c:10,r:10};
+const GHOST_SPAWN=[[10,10],[11,10],[9,10],[10,9]];
+const GCOL=['#ff4d4d','#ffb84d','#4dd2ff','#ff6bd6'];
+const GNAME=['BAD SECTOR 00','BAD SECTOR 13','BAD SECTOR 29','BAD SECTOR 47'];
 
-const MAZE = RAW.map(r => {
-  let s = r.replace(/[^01]/g,'1');
-  while (s.length < N) s += '1';
-  return s.slice(0,N);
-});
+let dots,player,ghosts,score,level,lives,dotsLeft,totalDots;
+let mode='title',modeT=0,muted=false,shake=0,flash=0,flashCol='#fff';
+const SPEED_P=6.2,SPEED_G=5.2,SPEED_F=3.0,POWER_T=7.0;
 
-const wall = (c,r) => c<0 || r<0 || c>=N || r>=N || MAZE[r][c] === '1';
-const cell = (c,r) => (c<0||r<0||c>=N||r>=N) ? '1' : MAZE[r][c];
-
-/* ---------- state ---------- */
-let dots, player, ghosts, score, level, lives, dotsLeft, totalDots;
-let mode = 'title';           // title | play | dying | cleared | over
-let modeT = 0;
-let keys = {};
-let muted = false;
-let shake = 0, flash = 0, flashCol = '#fff';
-
-const SPEED_PLAYER = 6.2;     // cells / second
-const SPEED_GHOST  = 5.2;
-const SPEED_FRIGHT  = 3.0;
-const POWER_TIME   = 7.0;     // seconds of "defrag mode"
-
-const GHOST_COLS = ['#ff4d4d','#ffb84d','#4dd2ff','#ff6bd6'];
-const GHOST_NAMES = ['BAD SECTOR','FRAG 13','FRAG 29','FRAG 47'];
-
-/* ---------- audio ---------- */
-let AC = null;
-function beep(freq, dur, type, vol, slideTo){
-  if (muted) return;
+/* audio */
+let AC=null;
+function beep(f,dur,type,vol,slide){
+  if(muted)return;
   try{
-    if (!AC) AC = new (window.AudioContext||window.webkitAudioContext)();
-    const t = AC.currentTime;
-    const o = AC.createOscillator(), g = AC.createGain();
-    o.type = type||'square';
-    o.frequency.setValueAtTime(freq, t);
-    if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(30,slideTo), t+dur);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol||0.06, t+0.008);
-    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
-    o.connect(g); g.connect(AC.destination);
-    o.start(t); o.stop(t+dur+0.02);
+    if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();
+    const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
+    o.type=type||'square';o.frequency.setValueAtTime(f,t);
+    if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,slide),t+dur);
+    g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol||.05,t+.008);
+    g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+dur+.02);
   }catch(e){}
 }
-const sfxDot   = () => beep(520, 0.05, 'square', 0.045);
-const sfxPower = () => { beep(200,0.12,'sawtooth',0.07,700); };
-const sfxGhost = () => { beep(760,0.14,'square',0.075,140); };
-const sfxDeath = () => { beep(420,0.7,'sawtooth',0.09,60); };
-const sfxClear = () => { [523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,0.13,'square',0.07),i*110)); };
-const sfxTurn  = () => beep(300, 0.03, 'square', 0.02);
+const sfxDot=()=>beep(520,.05,'square',.04);
+const sfxPow=()=>beep(200,.12,'sawtooth',.06,700);
+const sfxGhost=()=>beep(760,.14,'square',.07,140);
+const sfxDie=()=>beep(420,.7,'sawtooth',.08,60);
+const sfxWin=()=>[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.13,'square',.06),i*110));
 
-/* ---------- entity helpers ---------- */
-function makePlayer(){
-  return { c:1, r:17, dir:{x:-1,y:0}, want:{x:-1,y:0}, t:0, moving:false, mouth:0 };
+function mkPlayer(){return{c:PLAYER_START.c,r:PLAYER_START.r,dir:{x:-1,y:0},want:{x:-1,y:0},t:0,moving:false,mouth:0};}
+function mkGhosts(){
+  return GCOL.map((col,i)=>({c:GHOST_SPAWN[i][0],r:GHOST_SPAWN[i][1],dir:{x:-1,y:0},want:{x:-1,y:0},
+    t:0,moving:false,col,name:GNAME[i],fright:0,eaten:false}));
 }
-function makeGhosts(){
-  const spots = [[9,9],[10,9],[8,9],[11,9]];
-  return GHOST_COLS.map((col,i)=>({
-    c:spots[i][0], r:spots[i][1], dir:{x:-1,y:0}, want:{x:-1,y:0},
-    t:0, moving:false, col, name:GHOST_NAMES[i], fright:0, eaten:false, home:0
-  }));
-}
+function resetPos(){player=mkPlayer();ghosts=mkGhosts();}
 
-function resetPositions(){
-  player = makePlayer();
-  ghosts = makeGhosts();
-}
-
-/* ---------- level setup ---------- */
 function loadLevel(full){
-  if (full){
-    dots = [];
-    for (let r=0;r<N;r++){
-      const row=[];
-      for (let c=0;c<N;c++){
-        const v = cell(c,r);
-        row.push(v);
-      }
-      dots.push(row);
-    }
-    totalDots = 0;
-    for (let r=0;r<N;r++) for (let c=0;c<N;c++)
-      if (dots[r][c]==='0'||dots[r][c]==='2') totalDots++;
-  }
-  dotsLeft = 0;
-  for (let r=0;r<N;r++) for (let c=0;c<N;c++)
-    if (dots[r][c]==='0'||dots[r][c]==='2') dotsLeft++;
-  resetPositions();
-  if (full){ score=0; level=1; lives=3; }
-  syncHUD();
+  dots=MAZE.map(row=>row.split(''));
+  totalDots=0;for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(dots[r][c]==='0'||dots[r][c]==='2')totalDots++;
+  dotsLeft=totalDots;
+  resetPos();
+  if(full){score=0;level=1;lives=3;}
+  sync();
+}
+function sync(){
+  document.getElementById('score').textContent=score;
+  document.getElementById('level').textContent=level;
+  document.getElementById('lives').textContent='♥'.repeat(Math.max(0,lives))||'—';
+  const pct=totalDots?Math.round((1-dotsLeft/totalDots)*100):100;
+  document.getElementById('pct').textContent=pct+'%';
+  document.getElementById('fragtxt').textContent=(100-Math.min(60,pct))+'%';
+  document.getElementById('drivebar').style.width=pct+'%';
 }
 
-function syncHUD(){
-  document.getElementById('score').textContent = String(score).padStart(6,'0');
-  document.getElementById('level').textContent = level;
-  document.getElementById('lives').textContent = '♥'.repeat(Math.max(0,lives)) || '—';
-  const pct = totalDots ? Math.round((1 - dotsLeft/totalDots)*100) : 100;
-  document.getElementById('pct').textContent = pct+'%';
-  document.getElementById('bar').style.width = pct+'%';
-}
+const DIRS=[{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+const same=(a,b)=>a.x===b.x&&a.y===b.y;
+const canGo=(c,r,d)=>!wall(c+d.x,r+d.y);
 
-/* ---------- movement (grid-stepped, no float drift) ---------- */
-const DIRS = [ {x:1,y:0}, {x:-1,y:0}, {x:0,y:1}, {x:0,y:-1} ];
-const same = (a,b)=> a.x===b.x && a.y===b.y;
-
-function canGo(c,r,dir){ return !wall(c+dir.x, r+dir.y); }
-
-function stepEntity(e, speed, dt, isPlayer){
-  // speed = cells per second -> fraction of a cell this frame
-  let budget = speed * dt;
-  let guard = 0;
-  while (budget > 0 && guard++ < 8){
-    if (!e.moving){
-      // at a cell center: pick a direction
-      if (isPlayer && canGo(e.c,e.r,e.want)){ e.dir = {x:e.want.x, y:e.want.y}; }
-      if (!canGo(e.c,e.r,e.dir)){
-        // try to keep moving straight, else stop
-        e.moving = false;
-        break;
-      }
-      e.moving = true;
+function step(e,sp,dt,isP){
+  let b=sp*dt,g=0;
+  while(b>0&&g++<8){
+    if(!e.moving){
+      if(isP&&canGo(e.c,e.r,e.want))e.dir={x:e.want.x,y:e.want.y};
+      if(!canGo(e.c,e.r,e.dir)){e.moving=false;break;}
+      e.moving=true;
     }
-    const rem = 1 - e.t;
-    if (budget >= rem){
-      e.c += e.dir.x; e.r += e.dir.y; e.t = 0; e.moving=false; budget -= rem;
-      if (isPlayer && canGo(e.c,e.r,e.want) && !same(e.dir,e.want)) sfxTurn();
-    } else {
-      e.t += budget; budget = 0;
-    }
+    const rem=1-e.t;
+    if(b>=rem){e.c+=e.dir.x;e.r+=e.dir.y;e.t=0;e.moving=false;b-=rem;}
+    else{e.t+=b;b=0;}
   }
 }
-
-function ghostDir(g, pC, pR){
-  // frightened: wander away-ish, prefer random legal turn
-  const options = DIRS.filter(d => canGo(g.c,g.r,d));
-  if (!options.length) return {x:-g.dir.x,y:-g.dir.y};
-
-  if (g.eaten){
-    // head home-ish (nearest of the 4 spawn cells), simple: toward center
-    const tx = 9, ty = 9;
-    const opts = options.filter(d=> d.x===Math.sign(tx-g.c) || d.y===Math.sign(ty-g.r));
-    return opts.length ? pickByNoise(options, g) : pickByNoise(options, g);
-  }
-  if (g.fright>0){
-    // run away: choose option that increases distance from player
+function ghostDir(g,pc,pr){
+  const opts=DIRS.filter(d=>canGo(g.c,g.r,d));
+  if(!opts.length)return{x:-g.dir.x,y:-g.dir.y};
+  if(g.fright>0){
     let best=null,bd=-1;
-    for (const d of options){
-      const dc = Math.abs(g.c+d.x-pC)+Math.abs(g.r+d.y-pR);
-      if (dc>bd){bd=dc;best=d;}
-    }
+    for(const d of opts){const dc=Math.abs(g.c+d.x-pc)+Math.abs(g.r+d.y-pr);if(dc>bd){bd=dc;best=d;}}
     return best;
   }
-  // classic-ish: prefer the direction that reduces distance, with noise
-  const fwd = options.filter(d=>same(d,g.dir));
-  const pool = (Math.random()<0.72) ? (fwd.length?fwd:options) : options;
+  const fwd=opts.filter(d=>same(d,g.dir));
+  const pool=Math.random()<0.7?(fwd.length?fwd:opts):opts;
   let best=null,bd=1e9;
-  for (const d of pool){
-    const dc = Math.abs(g.c+d.x-pC)+Math.abs(g.r+d.y-pR);
-    if (dc<bd){bd=dc;best=d;}
-  }
-  return best||options[0];
-}
-function pickByNoise(options,g){
-  return options[(Math.random()*options.length)|0];
+  for(const d of pool){const dc=Math.abs(g.c+d.x-pc)+Math.abs(g.r+d.y-pr);if(dc<bd){bd=dc;best=d;}}
+  return best||opts[0];
 }
 
-/* ---------- update ---------- */
-let last = 0;
 function update(dt){
-  if (mode==='play'){
-    stepEntity(player, SPEED_PLAYER, dt, true);
-    // mouth animation
-    player.mouth += dt*9;
-
-    // eat dot
-    if (!player.moving){
-      const v = cell(player.c, player.r);
-      if (v==='0' && dots[player.r][player.c]==='0'){
-        dots[player.r][player.c]='3'; dotsLeft--; score+=10; sfxDot(); syncHUD();
-      } else if (v==='2' && dots[player.r][player.c]==='2'){
-        dots[player.r][player.c]='3'; dotsLeft--; score+=50; sfxPower();
-        ghosts.forEach(g=>{ if(!g.eaten) g.fright=POWER_TIME; });
-        flash=0.25; flashCol='#5cd6ff';
-        syncHUD();
-      }
-    } else {
-      // also allow eating at tile midpoints for smoothness
-      const v = cell(player.c, player.r);
-      if (v==='0' && dots[player.r][player.c]==='0'){
-        dots[player.r][player.c]='3'; dotsLeft--; score+=10; sfxDot(); syncHUD();
-      } else if (v==='2' && dots[player.r][player.c]==='2'){
-        dots[player.r][player.c]='3'; dotsLeft--; score+=50; sfxPower();
-        ghosts.forEach(g=>{ if(!g.eaten) g.fright=POWER_TIME; });
-        flash=0.25; flashCol='#5cd6ff'; syncHUD();
+  if(mode==='play'){
+    step(player,SPEED_P,dt,true);
+    player.mouth+=dt*9;
+    const v=cell(player.c,player.r);
+    if(v==='0'&&dots[player.r][player.c]==='0'){dots[player.r][player.c]='3';dotsLeft--;score+=10;sfxDot();sync();}
+    else if(v==='2'&&dots[player.r][player.c]==='2'){
+      dots[player.r][player.c]='3';dotsLeft--;score+=50;sfxPow();
+      ghosts.forEach(g=>{if(!g.eaten)g.fright=POWER_T;});flash=.2;flashCol='#5cd6ff';sync();
+    }
+    for(const g of ghosts){
+      if(g.fright>0)g.fright-=dt;
+      if(!g.moving)g.dir=ghostDir(g,player.c,player.r);
+      const sp=g.fright>0?SPEED_F:SPEED_G+(level-1)*.25;
+      step(g,sp,dt,false);
+      if(g.c===player.c&&g.r===player.r){
+        if(g.fright>0&&!g.eaten){score+=200;sfxGhost();g.eaten=true;flash=.2;flashCol='#f0a040';sync();}
+        else if(!g.eaten){mode='dying';modeT=0;sfxDie();shake=12;}
       }
     }
-
-    // ghosts
-    for (const g of ghosts){
-      if (g.fright>0) g.fright-=dt;
-      if (!g.moving){
-        if (g.eaten && g.c===9 && g.r===9){ g.eaten=false; g.fright=0; g.dir={x:-1,y:0}; }
-        g.dir = g.eaten ? ghostDir(g,9,9) : ghostDir(g, player.c, player.r);
-      }
-      const sp = g.eaten ? SPEED_GHOST*1.6 : (g.fright>0 ? SPEED_FRIGHT : SPEED_GHOST + (level-1)*0.28);
-      stepEntity(g, sp, dt, false);
-
-      // collision
-      if (g.c===player.c && g.r===player.r){
-        if (g.fright>0 && !g.eaten){
-          score+=200; sfxGhost(); g.eaten=true; flash=0.2; flashCol='#f0a040'; syncHUD();
-        } else if (!g.eaten){
-          mode='dying'; modeT=0; sfxDeath(); shake=14;
-        }
-      }
+    if(dotsLeft<=0){mode='cleared';modeT=0;score+=500;sfxWin();}
+  }else if(mode==='dying'){
+    modeT+=dt;
+    if(modeT>1.5){
+      lives--;sync();
+      if(lives<=0){mode='over';setMsg('DISK CORRUPTED','No more clusters to lose. Press Restart.','Restart');}
+      else{resetPos();mode='play';}
     }
-
-    if (dotsLeft<=0 && mode==='play'){
-      mode='cleared'; modeT=0; score+=500; sfxClear();
-    }
+  }else if(mode==='cleared'){
+    modeT+=dt;if(modeT>1.3){level++;loadLevel(false);mode='play';}
   }
-  else if (mode==='dying'){
-    modeT += dt;
-    if (modeT>1.6){
-      lives--;
-      syncHUD();
-      if (lives<=0){ mode='over'; modeT=0; showVeil('NO UNFORMATTED SPACE','The disk is corrupted beyond recovery.','press R'); }
-      else { resetPositions(); mode='play'; }
-    }
-  }
-  else if (mode==='cleared'){
-    modeT += dt;
-    if (modeT>1.4){ level++; loadLevel(false); mode='play'; }
-  }
-  shake = Math.max(0, shake - dt*40);
-  flash = Math.max(0, flash - dt*3);
-  if (mode!=='play') modeT += dt;
+  shake=Math.max(0,shake-dt*40);flash=Math.max(0,flash-dt*3);
+  if(mode!=='play')modeT+=dt;
 }
 
-/* ---------- render ---------- */
-function drawDisk(){
-  // dark platen
-  G.fillStyle = '#0a1120'; G.fillRect(0,0,CV.width,CV.height);
-  // concentric "track" arcs
-  G.save();
-  G.strokeStyle = 'rgba(92,214,255,0.05)'; G.lineWidth = 1;
-  for (let r=24;r<230;r+=14){
-    G.beginPath(); G.arc(180,180,r,0,Math.PI*2); G.stroke();
+/* Win98 defrag visual: dark blue field, cyan cluster blocks, yellow free-space */
+function drawBackdrop(){
+  G.fillStyle='#000080';G.fillRect(0,0,CV.width,CV.height);
+  // scattered "file cluster" blocks (cyan), denser = fragmented look
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    if(cell(c,r)==='1')continue;
+    const seed=((c*7919+r*104729)>>>0)%100;
+    if(seed<38){
+      G.fillStyle=seed<12?'#00a8a8':'#008080';
+      G.fillRect(c*T+3,r*T+3,T-6,T-6);
+    }
   }
-  // radial "sector" lines
-  G.strokeStyle = 'rgba(92,214,255,0.035)';
-  for (let a=0;a<360;a+=15){
-    G.beginPath(); G.moveTo(180,180);
-    G.lineTo(180+260*Math.cos(a*Math.PI/180), 180+260*Math.sin(a*Math.PI/180));
-    G.stroke();
-  }
-  // hub
-  G.fillStyle='rgba(92,214,255,0.06)'; G.beginPath(); G.arc(180,180,26,0,Math.PI*2); G.fill();
-  G.strokeStyle='rgba(92,214,255,0.12)'; G.beginPath(); G.arc(180,180,26,0,Math.PI*2); G.stroke();
-  G.restore();
+  // thin grid = cluster boundaries
+  G.strokeStyle='rgba(0,0,0,0.25)';G.lineWidth=1;
+  for(let i=0;i<=N;i++){G.beginPath();G.moveTo(i*T+.5,0);G.lineTo(i*T+.5,CV.height);G.stroke();
+    G.beginPath();G.moveTo(0,i*T+.5);G.lineTo(CV.width,i*T+.5);G.stroke();}
 }
-
 function drawWalls(){
-  for (let r=0;r<N;r++) for (let c=0;c<N;c++){
-    if (cell(c,r)!=='1') continue;
-    const x=c*T, y=r*T;
-    // skip fully-enclosed interior to reduce visual noise? keep simple: draw all
-    G.fillStyle = '#26374f';
-    G.fillRect(x+1,y+1,T-2,T-2);
-    // bevel highlight
-    G.fillStyle = '#3a5075';
-    G.fillRect(x+1,y+1,T-2,3);
-    G.fillStyle = 'rgba(0,0,0,0.35)';
-    G.fillRect(x+1,y+T-4,T-2,3);
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    if(cell(c,r)!=='1')continue;
+    const x=c*T,y=r*T;
+    G.fillStyle='#808080';G.fillRect(x,y,T,T);              // wall slab
+    G.fillStyle='#c0c0c0';G.fillRect(x+1,y+1,T-2,2);        // bevel light
+    G.fillStyle='#404040';G.fillRect(x+1,y+T-3,T-2,2);      // bevel dark
   }
 }
-
 function drawDots(){
-  const pulse = 0.5 + 0.5*Math.sin(performance.now()/160);
-  for (let r=0;r<N;r++) for (let c=0;c<N;c++){
-    const v = dots[r][c];
-    const cx = c*T+M, cy = r*T+M;
-    if (v==='0'){
-      G.fillStyle='rgba(255,176,0,0.9)';
-      G.fillRect(cx-2,cy-2,4,4);
-    } else if (v==='2'){
-      const s = 5 + pulse*2;
-      G.fillStyle = pulse>0.5 ? '#5cd6ff' : '#8fe8ff';
-      G.beginPath(); G.arc(cx,cy,s,0,Math.PI*2); G.fill();
-      G.strokeStyle='rgba(92,214,255,0.5)'; G.lineWidth=1;
-      G.beginPath(); G.arc(cx,cy,s+3,0,Math.PI*2); G.stroke();
+  const pu=.5+.5*Math.sin(performance.now()/160);
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const v=dots[r][c],cx=c*T+M,cy=r*T+M;
+    if(v==='0'){G.fillStyle='#ffff00';G.beginPath();G.arc(cx,cy,2.2,0,7);G.fill();}
+    else if(v==='2'){
+      const s=5+pu*2.5;
+      G.fillStyle=pu>.5?'#5cd6ff':'#a0f0ff';
+      G.beginPath();G.arc(cx,cy,s,0,7);G.fill();
+      G.strokeStyle='#5cd6ff';G.beginPath();G.arc(cx,cy,s+3,0,7);G.stroke();
     }
   }
 }
-
 function drawPlayer(){
-  let px = player.c*T + M + (player.moving ? player.dir.x*player.t*T : 0);
-  let py = player.r*T + M + (player.moving ? player.dir.y*player.t*T : 0);
-  const ang = Math.atan2(player.dir.y, player.dir.x);
-  const open = 0.20 + 0.30*Math.abs(Math.sin(player.mouth));
-  const R = 6.2;
-
-  G.save(); G.translate(px,py);
-  // glow
-  G.shadowColor='rgba(92,214,255,0.7)'; G.shadowBlur=10;
-  G.fillStyle='#8fe8ff';
-  G.beginPath();
-  G.moveTo(0,0);
-  G.arc(0,0,R, ang+open, ang-open+Math.PI*2);
-  G.closePath(); G.fill();
-  G.shadowBlur=0;
-  // inner core
-  G.fillStyle='rgba(255,255,255,0.5)';
-  G.beginPath(); G.arc(0,0,R*0.35,0,Math.PI*2); G.fill();
-  G.restore();
+  const px=player.c*T+M+(player.moving?player.dir.x*player.t*T:0);
+  const py=player.r*T+M+(player.moving?player.dir.y*player.t*T:0);
+  const ang=Math.atan2(player.dir.y,player.dir.x);
+  const open=.2+.3*Math.abs(Math.sin(player.mouth)),R=6;
+  G.save();G.translate(px,py);
+  G.shadowColor='rgba(92,214,255,.8)';G.shadowBlur=9;
+  G.fillStyle='#00ffff';G.beginPath();G.moveTo(0,0);
+  G.arc(0,0,R,ang+open,ang-open+Math.PI*2);G.closePath();G.fill();
+  G.shadowBlur=0;G.fillStyle='#fff';
+  G.beginPath();G.arc(0,0,R*.35,0,7);G.fill();G.restore();
 }
-
 function drawGhost(g){
-  let gx = g.c*T + M + (g.moving ? g.dir.x*g.t*T : 0);
-  let gy = g.r*T + M + (g.moving ? g.dir.y*g.t*T : 0);
-  const s = 6.2;
-  G.save(); G.translate(gx,gy);
-
-  let body = g.col;
-  if (g.eaten) body = 'rgba(220,230,255,0.35)';
-  else if (g.fright>0) body = (Math.floor(g.fright*6)%2===0) ? '#3a4a7a' : '#c8d0e8';
-
-  if (!g.eaten){
-    G.shadowColor = g.fright>0 ? 'rgba(150,170,255,0.6)' : g.col.replace(')',',0.5)').replace('#','#');
-    G.shadowColor = g.fright>0 ? 'rgba(150,170,255,0.6)' : g.col;
-    G.shadowBlur = 8;
-  }
-  G.fillStyle = body;
-  // rounded body with wavy bottom
-  G.beginPath();
-  G.arc(0,0,s, Math.PI, 0);
-  G.lineTo(s, s*0.7);
-  G.lineTo(s*0.5, s*0.25);
-  G.lineTo(0, s*0.7);
-  G.lineTo(-s*0.5, s*0.25);
-  G.lineTo(-s, s*0.7);
-  G.closePath(); G.fill();
-  G.shadowBlur=0;
-
-  // eyes
-  if (g.eaten){
-    G.fillStyle='#1a1a2a';
-    G.beginPath(); G.ellipse(-2.4,0,1.3,1.8,0,0,Math.PI*2); G.fill();
-    G.beginPath(); G.ellipse( 2.4,0,1.3,1.8,0,0,Math.PI*2); G.fill();
-  } else if (g.fright>0){
-    G.fillStyle='#fff';
-    G.fillRect(-3,-1,2,2); G.fillRect(1.5,-1,2,2);
-    // wavy mouth
-    G.strokeStyle='#fff'; G.lineWidth=1;
-    G.beginPath(); G.moveTo(-3,2.5); G.lineTo(-1.5,1.5); G.lineTo(0,2.5); G.lineTo(1.5,1.5); G.lineTo(3,2.5); G.stroke();
-  } else {
-    G.fillStyle='#fff';
-    G.beginPath(); G.ellipse(-2.4,-0.5,1.7,2,0,0,Math.PI*2); G.fill();
-    G.beginPath(); G.ellipse( 2.4,-0.5,1.7,2,0,0,Math.PI*2); G.fill();
-    G.fillStyle='#1a1a2a';
-    const ddx = g.dir.x*0.6, ddy = g.dir.y*0.6;
-    G.beginPath(); G.arc(-2.4+ddx,-0.5+ddy,0.9,0,Math.PI*2); G.fill();
-    G.beginPath(); G.arc( 2.4+ddx,-0.5+ddy,0.9,0,Math.PI*2); G.fill();
-  }
+  const gx=g.c*T+M+(g.moving?g.dir.x*g.t*T:0);
+  const gy=g.r*T+M+(g.moving?g.dir.y*g.t*T:0);
+  const s=6;
+  G.save();G.translate(gx,gy);
+  let body=g.col;
+  if(g.eaten)body='rgba(230,235,255,.4)';
+  else if(g.fright>0)body=Math.floor(g.fright*6)%2===0?'#2020a0':'#e0e0ff';
+  if(!g.eaten){G.shadowColor=g.fright>0?'rgba(200,210,255,.7)':g.col;G.shadowBlur=8;}
+  G.fillStyle=body;G.beginPath();G.arc(0,0,s,Math.PI,0);
+  G.lineTo(s,s*.7);G.lineTo(s*.5,s*.25);G.lineTo(0,s*.7);G.lineTo(-s*.5,s*.25);G.lineTo(-s,s*.7);
+  G.closePath();G.fill();G.shadowBlur=0;
+  if(g.eaten){G.fillStyle='#000';
+    G.beginPath();G.ellipse(-2.4,0,1.2,1.7,0,0,7);G.fill();
+    G.beginPath();G.ellipse(2.4,0,1.2,1.7,0,0,7);G.fill();}
+  else if(g.fright>0){G.fillStyle='#fff';G.fillRect(-3,-1,2,2);G.fillRect(1.5,-1,2,2);
+    G.strokeStyle='#fff';G.beginPath();G.moveTo(-3,2.5);G.lineTo(-1.5,1.5);G.lineTo(0,2.5);G.lineTo(1.5,1.5);G.lineTo(3,2.5);G.stroke();}
+  else{G.fillStyle='#fff';
+    G.beginPath();G.ellipse(-2.4,-.5,1.6,2,0,0,7);G.fill();
+    G.beginPath();G.ellipse(2.4,-.5,1.6,2,0,0,7);G.fill();
+    G.fillStyle='#000';const dx=g.dir.x*.6,dy=g.dir.y*.6;
+    G.beginPath();G.arc(-2.4+dx,-.5+dy,.9,0,7);G.fill();
+    G.beginPath();G.arc(2.4+dx,-.5+dy,.9,0,7);G.fill();}
   G.restore();
 }
-
 function render(){
   G.save();
-  if (shake>0){
-    const a = Math.random()*6-3;
-    G.translate(a, Math.random()*4-2);
-  }
-  drawDisk();
-  drawWalls();
-  drawDots();
-
-  // hide ghosts during title
-  if (mode!=='title'){
-    for (const g of ghosts) drawGhost(g);
-    // dying: player blinks then vanishes
-    if (mode==='dying'){
-      if (modeT<0.9 && Math.floor(modeT*12)%2===0) drawPlayer();
-    } else if (mode!=='over'){
-      drawPlayer();
-    }
-  } else {
-    // idle demo: draw player only
-    drawPlayer();
-  }
+  if(shake>0)G.translate(Math.random()*6-3,Math.random()*4-2);
+  drawBackdrop();drawWalls();drawDots();
+  if(mode==='play'){ghosts.forEach(drawGhost);drawPlayer();}
+  else if(mode==='dying'){if(modeT<.9&&Math.floor(modeT*12)%2===0)drawPlayer();}
+  else if(mode==='title')drawPlayer();
   G.restore();
-
-  if (flash>0){
-    G.fillStyle = flashCol; G.globalAlpha = flash*0.35;
-    G.fillRect(0,0,CV.width,CV.height); G.globalAlpha=1;
-  }
+  if(flash>0){G.fillStyle=flashCol;G.globalAlpha=flash*.3;G.fillRect(0,0,CV.width,CV.height);G.globalAlpha=1;}
 }
 
-/* ---------- overlays / UI ---------- */
-function showVeil(title, msg, btn, cls){
-  const v = document.getElementById('veil');
-  if (!v) return;
-  v.innerHTML = `
-    <h2>${title}</h2>
-    <p>${msg}</p>
-    <button class="go" id="goBtn">${btn||'EXECUTE'}</button>
-    <div class="keys">&larr;&uarr;&darr;&rarr; / WASD &middot; SPACE &middot; R &middot; M</div>`;
-  v.classList.remove('gone');
-  const b = document.getElementById('goBtn');
-  if (b) b.onclick = startGame;
+/* overlay (in-window dialog) */
+function setMsg(title,body,btn){
+  const v=document.getElementById('dlg');
+  if(!v)return;
+  v.style.display='flex';
+  v.innerHTML=`<div class="dlgbox"><div class="dlgtitle">${title}</div>
+    <div class="dlgbody">${body}</div>
+    <div class="dlgbtns"><button class="btn primary" id="dlgbtn">${btn||'OK'}</button></div></div>`;
+  const b=document.getElementById('dlgbtn');if(b)b.onclick=startGame;
 }
-function hideVeil(){
-  const v = document.getElementById('veil');
-  if (v) v.classList.add('gone');
-}
+function clearDlg(){const v=document.getElementById('dlg');if(v)v.style.display='none';}
 
 function startGame(){
-  if (mode==='title'||mode==='over'){ loadLevel(true); }
-  hideVeil(); mode='play';
-  document.getElementById('status').textContent = 'SEEK → TRACK 00 · DEFRAGGING';
+  if(mode==='title'||mode==='over')loadLevel(true);
+  clearDlg();mode='play';
+}
+function toggleMute(){
+  muted=!muted;
+  document.getElementById('muteBtn').textContent='Sound: '+(muted?'Off':'On');
 }
 
-/* ---------- input ---------- */
-addEventListener('keydown', e=>{
-  const k = e.key.toLowerCase();
-  keys[k]=true;
-  if (mode==='title' && (k===' '||k==='enter')){ e.preventDefault(); startGame(); return; }
-  if (k==='r'){ loadLevel(true); hideVeil(); mode='play'; return; }
-  if (k==='m'){ muted=!muted; return; }
-  if (mode==='play' || mode==='title'){
-    if (k==='arrowleft'||k==='a'){ player.want={x:-1,y:0}; e.preventDefault(); }
-    if (k==='arrowright'||k==='d'){ player.want={x:1,y:0}; e.preventDefault(); }
-    if (k==='arrowup'||k==='w'){ player.want={x:0,y:-1}; e.preventDefault(); }
-    if (k==='arrowdown'||k==='s'){ player.want={x:0,y:1}; e.preventDefault(); }
-    if (mode==='title'){ hideVeil(); mode='play'; }
+/* dialog CSS injected */
+const s=document.createElement('style');
+s.textContent=`#dlg{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.3)}
+.dlgbox{background:var(--win-face);padding:3px;width:min(92vw,360px);
+ box-shadow:inset -1px -1px 0 #0a0a0a,inset 1px 1px 0 var(--win-lite),inset -2px -2px 0 var(--win-shade),2px 2px 0 rgba(0,0,0,.4)}
+.dlgtitle{background:linear-gradient(90deg,var(--title-a),var(--title-b));color:#fff;font-weight:bold;font-size:12px;padding:3px 6px}
+.dlgbody{padding:14px 12px;font-size:12px;line-height:1.6}
+.dlgbtns{display:flex;justify-content:center;padding:0 10px 12px}`;
+document.head.appendChild(s);
+
+/* inputs */
+addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(k===' '||k==='enter'){e.preventDefault();if(mode==='title'||mode==='over')startGame();return;}
+  if(k==='r'){loadLevel(true);clearDlg();mode='play';return;}
+  if(k==='m'){toggleMute();return;}
+  if(mode==='play'||mode==='title'){
+    if(k==='arrowleft'||k==='a'){player.want={x:-1,y:0};e.preventDefault();}
+    if(k==='arrowright'||k==='d'){player.want={x:1,y:0};e.preventDefault();}
+    if(k==='arrowup'||k==='w'){player.want={x:0,y:-1};e.preventDefault();}
+    if(k==='arrowdown'||k==='s'){player.want={x:0,y:1};e.preventDefault();}
+    if(mode==='title'){clearDlg();mode='play';}
   }
 });
-addEventListener('keyup', e=>{ keys[e.key.toLowerCase()]=false; });
+document.getElementById('startBtn').onclick=startGame;
+document.getElementById('restartBtn').onclick=()=>{loadLevel(true);clearDlg();mode='play';};
+document.getElementById('muteBtn').onclick=toggleMute;
 
-/* ---------- boot ---------- */
+/* boot */
 loadLevel(true);
-showVeil('DISK DEFRAG v1.0',
-  'Consolidate 1.44 MB of scattered fragments.<br>Avoid the four bad sectors.', 'RUN DEFRAG');
+setMsg('Welcome to Disk Defragmenter',
+  'Your 1.44 MB floppy is fragmented.<br><br>'+
+  'Use <b>arrow keys</b> or <b>WASD</b> to move the read/write head.<br>'+
+  'Eat every yellow <b>fragment</b> to defragment.<br>'+
+  'Avoid the four <b>bad sectors</b> (ghosts).<br>'+
+  'Grab a pulsing <b>defrag tool</b> to turn them blue and erase them.<br><br>'+
+  'Clear the disk to advance a level.','Defragment');
 
+let last=0;
 function loop(ts){
-  if (!last) last = ts;
-  let dt = (ts-last)/1000; last = ts;
-  if (dt>0.05) dt=0.05;    // clamp
-  update(dt);
-  render();
-  requestAnimationFrame(loop);
+  if(!last)last=ts;let dt=(ts-last)/1000;last=ts;if(dt>.05)dt=.05;
+  update(dt);render();requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+// expose for automated testing
+window.__game={get mode(){return mode},get score(){return score},get dotsLeft(){return dotsLeft},
+  get player(){return player},get ghosts(){return ghosts},update,loadLevel,resetPos,
+  set mode(m){mode=m},startGame};
 </script>
 </body>
 </html>
